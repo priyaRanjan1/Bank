@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Indian Bank</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap-theme.min.css">
+    <script src="bower_components/angular/angular.min.js"></script>
+    <script src="bower_components/ui-router/release/angular-ui-router.min.js"></script>
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <style type="text/css">
+    .dropdown-menu-city {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 1000;
+        display: none;
+        float: left;
+        min-width: 160px;
+        padding: 5px 0;
+        margin: 2px 0 0;
+        font-size: 14px;
+        text-align: left;
+        list-style: none;
+        background-color: #fff;
+        -webkit-background-clip: padding-box;
+        background-clip: padding-box;
+        border: 1px solid #ccc;
+        border: 1px solid rgba(0,0,0,.15);
+        border-radius: 4px;
+        -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        display: block;
+    }
+    .dropdown-menu-city>li>a {
+            display: block;
+            padding: 3px 20px;
+            clear: both;
+            font-weight: 400;
+            line-height: 1.42857143;
+            color: #333;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<script type="text/javascript">
+    var indianBank = angular.module('indianBank', ['ui.router']);
+
+    indianBank.controller('homeController', function($scope, $http) {
+    
+        $scope.message = 'test';
+        var base_url = "http://localhost:3000";
+        var get_bank_list = base_url+"/banks";
+
+        var bank_list = [];
+        var start_bank_idx = 0;
+        $scope.bank_list = [];
+        $scope.selected_bank = "";
+        $scope.city_name = "";
+        $scope.city_list = [];
+        $scope.show_city_list_div = false;
+        $scope.branch_list = [];
+
+        $scope.fetch_new_list = function(type) {
+            if(type === "Back" && start_bank_idx > 0) {
+                start_bank_idx -= 10; 
+                $scope.bank_list = bank_list.slice(start_bank_idx, start_bank_idx + 10);
+            } else if(type === "Next" && start_bank_idx < bank_list.length) {
+                $scope.bank_list = bank_list.slice(start_bank_idx, start_bank_idx + 10);
+                start_bank_idx += 10;
+            }
+            $scope.selected_bank = $scope.bank_list[0];
+        }
+
+        $scope.change_selected_bank = function(bank_name) {
+            $scope.selected_bank = bank_name;
+        }
+
+
+        $http({
+            method: 'GET',
+            url: base_url+"/banks"
+        }).then(function successCallback(res) {
+            bank_list = res.data.data;
+            $scope.fetch_new_list('Next');
+
+        }, function errorCallback(res) {
+            console.log(res)
+        });
+
+        $scope.change_selected_city = function(city_name) {
+            $scope.city_name = city_name;
+            $scope.show_city_list_div = false;
+            fetch_branch_details($scope.selected_bank, $scope.city_name);
+        }
+
+        $scope.fetch_city_name = function(city_name) {
+
+            if(city_name === "" || city_name === null || city_name === undefined){
+                return;
+            }
+            var data = {
+                city_name : city_name.toUpperCase()
+            }
+            $http({
+                method: 'POST',
+                url: base_url+"/city",
+                data: data
+                }).then(function successCallback(res) {
+                    $scope.city_list = res.data.data;
+                    $scope.show_city_list_div = true;
+                }, function errorCallback(res) {
+                    console.log(res)
+            });
+        }
+
+        function fetch_branch_details(bank_name, city_name) {
+            if(!bank_name || !city_name) {
+                return;
+            }
+
+            var data = {
+                bank_name : bank_name,
+                city_name :city_name
+            };
+
+            $http({
+                method: 'POST',
+                url: base_url+"/branches",
+                data: data
+                }).then(function successCallback(res) {
+                    $scope.branch_list = res.data.data;
+                }, function errorCallback(res) {
+                    console.log(res)
+            });
+
+        }
+
+    });
+
+</script>
+
+<body ng-app="indianBank">
+    <header>
+    </header>
+    <div class="container" ng-controller="homeController">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="well">
+                    Select a bank from the dropdown
+                    <div class="dropdown">
+                        <button class="btn btn-dafault dropdown-toggle" type="button" data-toggle="dropdown">
+                            {{selected_bank}}<span class="caret"></span>
+                        </button>
+                        <div class="right-inner-addon">
+                            <i class="icon-search"></i>
+                            <input type="search" class="form-control" placeholder="Search" value="" ng-model="city_name" ng-change="fetch_city_name(city_name)">
+                        </div>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="bank in bank_list"><a href="" ng-click="change_selected_bank(bank)">{{bank}}</a></li>
+                            <a class="btn" ng-click="fetch_new_list('Back')">Back</a>&nbsp;&nbsp;&nbsp;<a class="btn" ng-click="fetch_new_list('Next')">Next</a>
+                        </ul>
+
+                        <ul class="dropdown-menu-city" ng-show="(city_list.length > 0) && show_city_list_div">
+                            <li ng-repeat="city in city_list"><a href="" ng-click="change_selected_city(city)">{{city}}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6" ng-show="branch_list.length > 0" >
+                <div class="well">
+                    <!-- <a href="" class="btn">Display all branches of the selected bank+city</a> -->
+                    <div class="row" ng-repeat="branch in branch_list">
+                        <div class="col-md-8">
+                            IFSC : {{branch.ifsc}}<br>
+                            Bank : {{branch.bank_name}}<br>
+                            Branch : {{branch.branch}}<br>
+                            City : {{branch.district}}, {{branch.city}}, {{branch.state}}
+                            <hr>
+                        </div>
+                        <div class="col-md-8"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+    </footer>
+    <!-- Latest compiled and minified JavaScript -->
+    
+</body>
+
+</html>
